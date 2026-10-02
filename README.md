@@ -205,7 +205,6 @@ Core files:
 - `insider_trading/historical_sec.py` — downloads and processes historical SEC Form 4 data
 - `insider_trading/historical_score.py` — cleans transactions and calculates conviction scores
 - `insider_trading/event_backtest.py` — runs the final point-in-time event-level backtest
-- `insider_trading/main.py` — recent/live SEC insider scanner
 
 ## Part II — Congressional Trading
 
