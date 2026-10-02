@@ -2,181 +2,75 @@
 
 Aerodynamic is a quantitative research project testing publicly observable trading signals from corporate insiders and U.S. congressional disclosures.
 
+## Overview
+
+The project compares two signals:
+
+1. Corporate insider open-market purchases reported through SEC Form 4 filings
+2. U.S. Congressional stock purchases reported through House and Senate financial disclosures
+
+Both studies are designed around point-in-time information so that a trade is only considered after the relevant filing became public.
+
+For a concise explanation of the research design, results and caveats, see:
+
+- `METHODOLOGY.md`
+- `RESULTS.md`
+- `LIMITATIONS.md`
+
 ## Part I — Corporate Insider Trading
 
-## What This Project Does
+Historical insider transactions are sourced from official SEC Form 4 / Insider Transactions data for 2021–2025. The study focuses on genuine open-market purchases (`P`) by management and directors, excludes pure 10% owners, and uses the SEC filing date rather than transaction date as the signal date.
 
-Aerodynamic tests whether publicly disclosed insider purchases reported through SEC Form 4 filings can be used to generate excess stock returns.
+Each signal is scored using purchase value, percentage increase in holdings, insider role, cluster buying and identified 10b5-1 status. The final event study uses signals scoring at least 12, applies a 14-calendar-day ticker cooldown, enters at the next trading-day open and compares 20, 60 and 120 trading-day forward returns with SPY.
 
-The strategy focuses on open-market insider purchases and scores each signal based on:
+### Final Insider Results
 
-- Purchase value
-- Increase in insider holdings
-- Insider role
-- Cluster buying by multiple insiders
-- 10b5-1 status
+| Holding period | Observations | Avg. stock return | Avg. excess vs SPY | Beat SPY |
+|---|---:|---:|---:|---:|
+| 20 trading days | 943 | 1.20% | +0.14% | 48.04% |
+| 60 trading days | 894 | 1.83% | -1.31% | 42.95% |
+| 120 trading days | 839 | -1.46% | -6.73% | 37.78% |
 
-The historical test uses SEC Form 4 data from 2021–2025 and compares subsequent stock performance against SPY.
+The final point-in-time event study did not show robust standalone alpha. Performance was approximately market-like over 20 trading days and weaker over 60 and 120 trading days.
 
-## Data and Signal Rules
+Core files:
 
-Historical insider transactions are sourced from the SEC Insider Transactions Data Sets.
+- `insider_trading/historical_sec.py`
+- `insider_trading/historical_score.py`
+- `insider_trading/event_backtest.py`
 
-Only open-market purchases are included:
+## Part II — Congressional Trading
 
-- SEC transaction code: `P`
-- Management and directors only
-- Filing lag: 0–10 calendar days
-- Transaction price: $0.01–$10,000
-- Purchase value: $10,000–$100 million
-- Minimum stock entry price: $5.00
+Congressional transactions are sourced from official House and Senate financial-disclosure systems for 2020–2026. The cleaned investable universe contains 15,818 purchases across 185 politicians and 2,190 tickers.
 
-Signals are based on the SEC filing date rather than the transaction date to avoid look-ahead bias.
+The base strategy is rebalanced weekly. A transaction is only eligible when its filing date is earlier than the rebalance date. The base specification uses a 365-day transaction-date rolling window, weights purchases by the lower bound of the disclosed amount range, caps any single security at 50%, leaves unpriceable allocations in cash, assumes 10 bps one-way transaction costs and benchmarks against SPY.
 
-## Conviction Score
+### Final Congressional Base Case
 
-Each purchase receives an Aerodynamic Conviction Score.
+| Metric | Congress Net | SPY |
+|---|---:|---:|
+| Total return | 139.90% | 121.03% |
+| CAGR | 16.50% | 14.84% |
+| Annualized volatility | 19.43% | 16.32% |
+| Sharpe | 0.88 | 0.93 |
+| Max drawdown | -23.13% | -23.31% |
 
-### Purchase Value
-- <$100k: 0
-- $100k–$250k: 1
-- $250k–$500k: 2
-- $500k–$1m: 3
-- $1m–$5m: 4
-- $5m+: 5
+Net CAGR exceeded SPY by 1.65 percentage points annually, but volatility was higher and the Sharpe ratio was slightly lower.
 
-### Holdings Increase
-- <2%: 0
-- 2–5%: 1
-- 5–10%: 2
-- 10–25%: 3
-- 25–50%: 4
-- 50%+: 5
+### Robustness
 
-### Role
-- CEO: 4
-- CFO: 4
-- Chairman: 3
-- President: 3
-- COO: 3
-- Other Executive: 2
-- Director: 1
+The Congressional strategy was tested across 54 specifications covering 180, 365 and 730-day windows; lower-bound and midpoint weighting; 0, 10 and 25 bps transaction costs; and combined, House-only and Senate-only portfolios.
 
-### Cluster Buying
-- 1 insider: 0
-- 2 insiders: 2
-- 3 insiders: 4
-- 4+ insiders: 5
-- CEO/CFO involvement can add 1 point, capped at 5
+- 34 / 54 specifications beat SPY CAGR
+- Median excess CAGR: +1.28%
+- House-only median excess CAGR: +3.15%
+- Senate-only median excess CAGR: -6.65%
 
-### 10b5-1
-- Identified 10b5-1 transaction: -5
+The main Congressional finding is therefore concentrated in House disclosures rather than Senate disclosures, and it weakens materially at longer signal horizons.
 
-### Conviction Classification
-- 15+: Very Strong
-- 12–14: Strong
-- 9–11: Moderate
-- 6–8: Weak
-- <6: Ignore
+## Overall Conclusion
 
-The historical backtest uses signals with a score of at least 12.
-
-## Final Backtest Methodology
-
-The final test is a point-in-time event-level backtest.
-
-For each ticker:
-
-1. Take the first qualifying signal with Conviction Score ≥12
-2. Freeze all information available on that filing date
-3. Buy at the next trading-day open
-4. Ignore additional qualifying signals in the same ticker for 14 calendar days
-5. Measure returns after 20, 60 and 120 trading days
-6. Compare performance with SPY over the same period
-
-This avoids repeatedly counting multiple insider filings from the same event as separate independent trades.
-
-## Final Results
-
-### 20 Trading Days
-- Observations: 943
-- Average stock return: 1.20%
-- Median stock return: 0.38%
-- Positive return rate: 51.43%
-- Average excess return vs SPY: 0.14%
-- Median excess return vs SPY: -0.43%
-- Beat SPY rate: 48.04%
-
-### 60 Trading Days
-- Observations: 894
-- Average stock return: 1.83%
-- Median stock return: 0.15%
-- Positive return rate: 50.34%
-- Average excess return vs SPY: -1.31%
-- Median excess return vs SPY: -3.42%
-- Beat SPY rate: 42.95%
-
-### 120 Trading Days
-- Observations: 839
-- Average stock return: -1.46%
-- Median stock return: -2.38%
-- Positive return rate: 45.53%
-- Average excess return vs SPY: -6.73%
-- Median excess return vs SPY: -7.93%
-- Beat SPY rate: 37.78%
-
-## Results by Insider Role
-
-Selected 20D / 60D excess-return results:
-
-- CEO: 0.01% / -1.31%
-- CFO: 1.48% / 3.26%
-- COO: 0.90% / -1.91%
-- Chairman: -0.66% / -2.61%
-- Director: -0.91% / -5.28%
-- Other Executive: 1.30% / 2.58%
-- President: 0.58% / -0.17%
-
-CFO and Other Executive purchases showed relatively better results, while Director purchases were consistently weak.
-
-## Results by Conviction Score
-
-The score was not consistently monotonic.
-
-Examples:
-
-- Score 12: 20D excess +0.14%, 60D excess -2.87%
-- Score 13: 20D excess +1.59%, 60D excess +0.49%
-- Score 14: 20D excess -1.63%, 60D excess +1.87%
-- Score 15: 20D excess -1.86%, 60D excess -3.48%
-- Score 16: 20D excess -4.03%, 60D excess -8.07%
-- Score 18: 20D excess +7.75%, 60D excess +7.66%
-
-Score 18 performed strongly, but only had 10 observations at 20D and 9 at 60D, so the sample was too small to treat as reliable evidence.
-
-## Coverage
-
-Final point-in-time backtest:
-
-- Eligible filing-level signals: 3,040
-- Point-in-time events after 14-day cooldown: 1,583
-- Valid backtest observations: 960
-- Event coverage rate: 60.64%
-- Failed Yahoo Finance tickers: 277
-- Skipped for missing price/history: 442
-- Skipped because entry price was below $5: 181
-
-The relatively low price-history coverage is an important limitation and may introduce survivorship bias.
-
-## Conclusion
-
-The final point-in-time backtest did not show a robust standalone alpha signal from the current Aerodynamic insider-purchase scoring framework.
-
-The strategy was approximately market-neutral over 20 trading days and underperformed SPY over 60 and 120 trading days.
-
-The earlier stronger results were materially reduced after correcting for repeated observations from the same insider-buying event and ensuring all signal information was available at the actual trading date.
-
-The project therefore does not support using the current Aerodynamic insider-purchase score as a standalone automated trading strategy.
+The corporate insider signal did not retain robust excess returns after correcting repeated-event counting and enforcing point-in-time methodology. Congressional purchases produced modest positive historical excess returns under the base portfolio specification and several reasonable sensitivity tests, but without consistently superior risk-adjusted performance. The effect was primarily driven by House disclosures.
 
 ## Reproducing the Analysis
 
@@ -192,7 +86,7 @@ Before accessing SEC endpoints, set a descriptive SEC user agent with your own c
 $env:SEC_USER_AGENT="Aerodynamic research project your-email@example.com"
 ```
 
-Run:
+Run the insider study:
 
 ```powershell
 python insider_trading/historical_sec.py
@@ -200,12 +94,14 @@ python insider_trading/historical_score.py
 python insider_trading/event_backtest.py
 ```
 
-Core files:
+The consolidated Congressional pipeline consists of:
 
-- `insider_trading/historical_sec.py` — downloads and processes historical SEC Form 4 data
-- `insider_trading/historical_score.py` — cleans transactions and calculates conviction scores
-- `insider_trading/event_backtest.py` — runs the final point-in-time event-level backtest
+```text
+house_data.py
+senate_data.py
+prepare_data.py
+backtest.py
+robustness.py
+```
 
-## Part II — Congressional Trading
-
-In progress.
+Run them in that order after placing the Congressional files in the repository structure described in the methodology documentation.
