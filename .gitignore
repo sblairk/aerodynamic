@@ -1,0 +1,21 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+*.env
+
+# Generated / downloaded data
+*.csv
+*.parquet
+*.zip
+sec_insider_data/
+data/
+cache/
+*_cache/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
